@@ -8,3 +8,8 @@ license = "MIT"
 repository = "https://github.com/dmitmel/zshrug.git"
 homepage = "https://github.com/dmitmel/zshrug"
 readme = "README.md"
+
+[dependencies]
+serde = "1.0"
+serde_derive = "1.0"
+serde_yaml = "0.8"
