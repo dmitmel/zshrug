@@ -1,0 +1,10 @@
+[package]
+publish = false
+name = "zshrug"
+version = "0.1.0"
+authors = ["Dmytro Meleshko <dmytro.meleshko@gmail.com>"]
+description = "TODO"
+license = "MIT"
+repository = "https://github.com/dmitmel/zshrug.git"
+homepage = "https://github.com/dmitmel/zshrug"
+readme = "README.md"
