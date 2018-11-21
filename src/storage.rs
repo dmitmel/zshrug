@@ -19,9 +19,8 @@ pub fn download_plugins(config: &Config) -> Result<(), Error> {
   })?;
 
   for plugin in &config.plugins {
-    download_plugin(&storage_dir, plugin).with_context(|_| {
-      format!("couldn't download plugin '{}'", plugin.name)
-    })?;
+    download_plugin(&storage_dir, plugin)?;
+    log!();
   }
 
   Ok(())
@@ -45,18 +44,14 @@ fn download_plugin(storage_dir: &Path, plugin: &Plugin) -> Result<(), Error> {
     )
   })?;
 
-  let download_result: Result<(), Error> = match plugin.from {
+  match plugin.from {
     PluginSource::Git => clone_git_repository(&plugin.name, &plugin_dir),
     PluginSource::Url => download_file(&plugin.name, &plugin_dir),
     _ => unreachable!(),
-  };
-
-  log!();
-
-  if let Err(error) = download_result {
+  }.map_err(|error| {
     fs::remove_dir_all(&plugin_dir).unwrap();
-    Err(error)?;
-  }
+    error
+  }).with_context(|_| format!("couldn't download plugin '{}'", plugin.name))?;
 
   Ok(())
 }
