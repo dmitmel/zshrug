@@ -1,10 +1,13 @@
+extern crate dirs;
+extern crate md5;
+
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_yaml;
 
 mod config;
-use config::*;
+mod storage;
 
 fn main() {
   use std::io::{self, Read};
@@ -15,6 +18,6 @@ fn main() {
     buffer
   };
 
-  let config: Config = serde_yaml::from_str(&input).unwrap();
-  println!("{:#?}", config);
+  let config: config::Config = serde_yaml::from_str(&input).unwrap();
+  storage::download_plugins(&config).unwrap();
 }

@@ -10,6 +10,8 @@ homepage = "https://github.com/dmitmel/zshrug"
 readme = "README.md"
 
 [dependencies]
+dirs = "1.0.4"
+md5 = "0.6.0"
 serde = "1.0"
 serde_derive = "1.0"
 serde_yaml = "0.8"

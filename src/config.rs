@@ -33,6 +33,13 @@ pub struct Plugin {
   pub ignore: Patterns,
 }
 
+impl Plugin {
+  pub fn id(&self) -> String {
+    let id_str = format!("{:?}:{}", self.from, self.name);
+    format!("{:x}", md5::compute(id_str))
+  }
+}
+
 #[derive(Debug, Default)]
 pub struct Patterns(pub Vec<String>);
 
@@ -70,7 +77,7 @@ impl<'de> Deserialize<'de> for Patterns {
   }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Eq, PartialEq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum PluginSource {
   Git,
