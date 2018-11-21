@@ -1,3 +1,7 @@
+#[macro_use]
+extern crate failure;
+extern crate failure_derive;
+
 extern crate dirs;
 extern crate md5;
 
@@ -6,18 +10,51 @@ extern crate serde;
 extern crate serde_derive;
 extern crate serde_yaml;
 
+use failure::{Error, ResultExt};
+
+macro_rules! log {
+  ()            => { eprintln!() };
+  ($($arg:tt)*) => { eprintln!("[zshrug] {}", format_args!($($arg)*)) };
+}
+
 mod config;
 mod storage;
 
 fn main() {
+  if let Err(error) = run() {
+    use std::{process, thread};
+
+    let thread = thread::current();
+    let name = thread.name().unwrap_or("<unnamed>");
+
+    log!("error in thread '{}': {}", name, error);
+
+    for cause in error.iter_causes() {
+      log!("caused by: {}", cause);
+    }
+
+    log!("{}", error.backtrace());
+    log!("note: Run with `RUST_BACKTRACE=1` if you don't see a backtrace.");
+
+    process::exit(1);
+  }
+}
+
+fn run() -> Result<(), Error> {
   use std::io::{self, Read};
 
   let input: String = {
     let mut buffer = String::new();
-    io::stdin().read_to_string(&mut buffer).unwrap();
+    io::stdin()
+      .read_to_string(&mut buffer)
+      .context("couldn't read config from stdin")?;
     buffer
   };
 
-  let config: config::Config = serde_yaml::from_str(&input).unwrap();
-  storage::download_plugins(&config).unwrap();
+  let config: config::Config =
+    serde_yaml::from_str(&input).context("couldn't parse config")?;
+
+  storage::download_plugins(&config).context("couldn't download plugins")?;
+
+  Ok(())
 }

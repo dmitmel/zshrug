@@ -1,78 +1,90 @@
 use std::fs;
-use std::io;
-use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::path::Path;
+use std::process::Command;
+
+use failure::{Error, ResultExt};
 
 use config::*;
 
-pub fn storage_directory() -> PathBuf {
-  dirs::cache_dir().unwrap().join(env!("CARGO_PKG_NAME"))
-}
+pub fn download_plugins(config: &Config) -> Result<(), Error> {
+  let storage_dir = dirs::cache_dir()
+    .ok_or_else(|| format_err!("couldn't get system cache directory"))?
+    .join(env!("CARGO_PKG_NAME"));
 
-pub fn download_plugins(config: &Config) -> io::Result<()> {
-  let storage_dir = storage_directory();
-  fs::create_dir_all(&storage_dir)?;
+  fs::create_dir_all(&storage_dir).with_context(|_| {
+    format!(
+      "couldn't create storage directory '{}'",
+      storage_dir.display()
+    )
+  })?;
 
   for plugin in &config.plugins {
-    if plugin.from == PluginSource::Local {
-      continue;
-    }
-
-    let plugin_dir = storage_dir.join(plugin.id());
-
-    if plugin_dir.is_dir() {
-      continue;
-    }
-
-    fs::create_dir_all(&plugin_dir)?;
-
-    let download_result: io::Result<()> = match plugin.from {
-      PluginSource::Git => clone_git_repository(&plugin.name, &plugin_dir),
-      PluginSource::Url => download_file(&plugin.name, &plugin_dir),
-      _ => unreachable!(),
-    };
-
-    println!();
-
-    if let Err(error) = download_result {
-      fs::remove_dir_all(&plugin_dir).unwrap();
-      return Err(error);
-    }
+    download_plugin(&storage_dir, plugin).with_context(|_| {
+      format!("couldn't download plugin '{}'", plugin.name)
+    })?;
   }
 
   Ok(())
 }
 
-fn clone_git_repository(repo: &str, dir: &Path) -> io::Result<()> {
-  println!("Cloning git repository '{}'...", repo);
+fn download_plugin(storage_dir: &Path, plugin: &Plugin) -> Result<(), Error> {
+  if plugin.from == PluginSource::Local {
+    return Ok(());
+  }
 
-  let mut cmd = Command::new("git")
-    .arg("clone")
-    .arg(repo)
-    .arg(dir)
-    .stdin(Stdio::inherit())
-    .stdout(Stdio::inherit())
-    .spawn()?;
+  let plugin_dir = storage_dir.join(plugin.id());
 
-  let exit_code = cmd.wait()?;
-  assert!(exit_code.success());
+  if plugin_dir.is_dir() {
+    return Ok(());
+  }
+
+  fs::create_dir_all(&plugin_dir).with_context(|_| {
+    format!(
+      "couldn't create plugin directory '{}'",
+      plugin_dir.display()
+    )
+  })?;
+
+  let download_result: Result<(), Error> = match plugin.from {
+    PluginSource::Git => clone_git_repository(&plugin.name, &plugin_dir),
+    PluginSource::Url => download_file(&plugin.name, &plugin_dir),
+    _ => unreachable!(),
+  };
+
+  log!();
+
+  if let Err(error) = download_result {
+    fs::remove_dir_all(&plugin_dir).unwrap();
+    Err(error)?;
+  }
 
   Ok(())
 }
 
-fn download_file(url: &str, dir: &Path) -> io::Result<()> {
-  println!("Downloading '{}'...", url);
+fn clone_git_repository(repo: &str, dir: &Path) -> Result<(), Error> {
+  log!("Cloning git repository '{}'...", repo);
 
-  let mut cmd = Command::new("wget")
-    .arg("-P")
+  let exit_status = Command::new("git")
+    .arg("clone")
+    .arg(repo)
+    .arg(dir)
+    .status()
+    .context("couldn't run git")?;
+
+  ensure!(exit_status.success(), "git has exited with an error");
+  Ok(())
+}
+
+fn download_file(url: &str, dir: &Path) -> Result<(), Error> {
+  log!("Downloading '{}'...", url);
+
+  let exit_status = Command::new("wget")
+    .arg("--directory-prefix")
     .arg(dir)
     .arg(url)
-    .stdin(Stdio::inherit())
-    .stdout(Stdio::inherit())
-    .spawn()?;
+    .status()
+    .context("couldn't run wget")?;
 
-  let exit_code = cmd.wait()?;
-  assert!(exit_code.success());
-
+  ensure!(exit_status.success(), "git has exited with an error");
   Ok(())
 }
