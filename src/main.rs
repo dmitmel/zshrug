@@ -33,8 +33,12 @@ fn main() {
       log!("caused by: {}", cause);
     }
 
-    log!("{}", error.backtrace());
-    log!("note: Run with `RUST_BACKTRACE=1` if you don't see a backtrace.");
+    let backtrace = error.backtrace().to_string();
+    if backtrace.is_empty() {
+      log!("note: Run with `RUST_BACKTRACE=1` for a backtrace.");
+    } else {
+      log!("{}", backtrace);
+    }
 
     process::exit(1);
   }
