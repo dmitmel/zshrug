@@ -41,14 +41,15 @@ fn main() {
 }
 
 fn run() -> Result<(), Error> {
-  use std::io::{self, Read};
-
   let storage_root = dirs::cache_dir()
     .ok_or_else(|| format_err!("couldn't get system cache directory"))?
     .join(env!("CARGO_PKG_NAME"));
-  let storage = storage::Storage::init(storage_root)?;
+  let mut storage = storage::Storage::init(storage_root)
+    .context("couldn't initialize storage")?;
 
   let input: String = {
+    use std::io::{self, Read};
+
     let mut buffer = String::new();
     io::stdin()
       .read_to_string(&mut buffer)

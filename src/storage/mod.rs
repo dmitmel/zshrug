@@ -6,8 +6,13 @@ use failure::{Error, ResultExt};
 
 use config::*;
 
+mod state;
+use self::state::State;
+
+#[derive(Debug)]
 pub struct Storage {
-  pub root: PathBuf,
+  root: PathBuf,
+  state: State,
 }
 
 impl Storage {
@@ -16,18 +21,28 @@ impl Storage {
       format!("couldn't create storage directory '{}'", root.display())
     })?;
 
-    Ok(Self { root })
+    let state_path = root.join("state");
+    let state =
+      State::load(state_path).context("couldn't read storage state")?;
+
+    Ok(Self { root, state })
   }
 
-  pub fn download_plugin(&self, plugin: &Plugin) -> Result<(), Error> {
+  pub fn download_plugin(&mut self, plugin: &Plugin) -> Result<(), Error> {
     if plugin.from == PluginSource::Local {
+      return Ok(());
+    }
+
+    if self.state.is_plugin_downloaded(plugin) {
       return Ok(());
     }
 
     let plugin_dir = self.root.join(plugin.id());
 
     if plugin_dir.is_dir() {
-      return Ok(());
+      fs::remove_dir_all(&plugin_dir).with_context(|_| {
+        format!("couldn't clear plugin directory '{}'", plugin_dir.display())
+      })?;
     }
 
     fs::create_dir_all(&plugin_dir).with_context(|_| {
@@ -37,18 +52,13 @@ impl Storage {
       )
     })?;
 
-    let download_result: Result<(), _> = match plugin.from {
+    match plugin.from {
       PluginSource::Git => clone_git_repository(&plugin.name, &plugin_dir),
       PluginSource::Url => download_file(&plugin.name, &plugin_dir),
       _ => unreachable!(),
-    };
+    }.with_context(|_| format!("couldn't download plugin '{}'", plugin.name))?;
 
-    if download_result.is_err() {
-      fs::remove_dir_all(&plugin_dir).unwrap();
-      download_result.with_context(|_| {
-        format!("couldn't download plugin '{}'", plugin.name)
-      })?;
-    }
+    self.state.add_downloaded_plugin(plugin)?;
 
     log!();
 
