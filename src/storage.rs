@@ -1,59 +1,59 @@
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use failure::{Error, ResultExt};
 
 use config::*;
 
-pub fn download_plugins(config: &Config) -> Result<(), Error> {
-  let storage_dir = dirs::cache_dir()
-    .ok_or_else(|| format_err!("couldn't get system cache directory"))?
-    .join(env!("CARGO_PKG_NAME"));
-
-  fs::create_dir_all(&storage_dir).with_context(|_| {
-    format!(
-      "couldn't create storage directory '{}'",
-      storage_dir.display()
-    )
-  })?;
-
-  for plugin in &config.plugins {
-    download_plugin(&storage_dir, plugin)?;
-    log!();
-  }
-
-  Ok(())
+pub struct Storage {
+  pub root: PathBuf,
 }
 
-fn download_plugin(storage_dir: &Path, plugin: &Plugin) -> Result<(), Error> {
-  if plugin.from == PluginSource::Local {
-    return Ok(());
+impl Storage {
+  pub fn init(root: PathBuf) -> Result<Self, Error> {
+    fs::create_dir_all(&root).with_context(|_| {
+      format!("couldn't create storage directory '{}'", root.display())
+    })?;
+
+    Ok(Self { root })
   }
 
-  let plugin_dir = storage_dir.join(plugin.id());
+  pub fn download_plugin(&self, plugin: &Plugin) -> Result<(), Error> {
+    if plugin.from == PluginSource::Local {
+      return Ok(());
+    }
 
-  if plugin_dir.is_dir() {
-    return Ok(());
+    let plugin_dir = self.root.join(plugin.id());
+
+    if plugin_dir.is_dir() {
+      return Ok(());
+    }
+
+    fs::create_dir_all(&plugin_dir).with_context(|_| {
+      format!(
+        "couldn't create plugin directory '{}'",
+        plugin_dir.display()
+      )
+    })?;
+
+    let download_result: Result<(), _> = match plugin.from {
+      PluginSource::Git => clone_git_repository(&plugin.name, &plugin_dir),
+      PluginSource::Url => download_file(&plugin.name, &plugin_dir),
+      _ => unreachable!(),
+    };
+
+    if download_result.is_err() {
+      fs::remove_dir_all(&plugin_dir).unwrap();
+      download_result.with_context(|_| {
+        format!("couldn't download plugin '{}'", plugin.name)
+      })?;
+    }
+
+    log!();
+
+    Ok(())
   }
-
-  fs::create_dir_all(&plugin_dir).with_context(|_| {
-    format!(
-      "couldn't create plugin directory '{}'",
-      plugin_dir.display()
-    )
-  })?;
-
-  match plugin.from {
-    PluginSource::Git => clone_git_repository(&plugin.name, &plugin_dir),
-    PluginSource::Url => download_file(&plugin.name, &plugin_dir),
-    _ => unreachable!(),
-  }.map_err(|error| {
-    fs::remove_dir_all(&plugin_dir).unwrap();
-    error
-  }).with_context(|_| format!("couldn't download plugin '{}'", plugin.name))?;
-
-  Ok(())
 }
 
 fn clone_git_repository(repo: &str, dir: &Path) -> Result<(), Error> {

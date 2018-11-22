@@ -43,6 +43,11 @@ fn main() {
 fn run() -> Result<(), Error> {
   use std::io::{self, Read};
 
+  let storage_root = dirs::cache_dir()
+    .ok_or_else(|| format_err!("couldn't get system cache directory"))?
+    .join(env!("CARGO_PKG_NAME"));
+  let storage = storage::Storage::init(storage_root)?;
+
   let input: String = {
     let mut buffer = String::new();
     io::stdin()
@@ -54,7 +59,9 @@ fn run() -> Result<(), Error> {
   let config: config::Config =
     serde_yaml::from_str(&input).context("couldn't parse config")?;
 
-  storage::download_plugins(&config).context("couldn't download plugins")?;
+  for plugin in &config.plugins {
+    storage.download_plugin(plugin)?;
+  }
 
   Ok(())
 }
