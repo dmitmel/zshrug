@@ -46,6 +46,8 @@ impl Storage {
       return Ok(());
     }
 
+    log!("Downloading plugin {:?} from {:?}", plugin.name, plugin.from);
+
     let lock_path = self.root.join("lock");
     let lock_file = File::create(&lock_path)?;
     let _lock = exclusively_lock_file(&lock_file).with_context(|_| {
@@ -66,10 +68,7 @@ impl Storage {
     }
 
     fs::create_dir_all(&plugin_dir).with_context(|_| {
-      format!(
-        "couldn't create plugin directory '{}'",
-        plugin_dir.display()
-      )
+      format!("couldn't create plugin directory '{}'", plugin_dir.display())
     })?;
 
     match plugin.from {

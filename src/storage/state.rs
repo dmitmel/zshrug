@@ -31,12 +31,10 @@ impl State {
     let file = self.open()?;
 
     let reader = BufReader::new(&file);
-    let downloaded_plugins = reader
-      .lines()
-      .collect::<io::Result<HashSet<String>>>()
-      .with_context(|_| {
-        format!("couldn't read file '{}'", self.path.display())
-      })?;
+    let downloaded_plugins =
+      reader.lines().collect::<io::Result<HashSet<String>>>().with_context(
+        |_| format!("couldn't read file '{}'", self.path.display()),
+      )?;
 
     Ok(downloaded_plugins)
   }
