@@ -1,4 +1,6 @@
-use std::fs;
+use cluFlock::{ExclusiveSliceLock, Flock};
+use std::fs::{self, File};
+use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -22,8 +24,7 @@ impl Storage {
     })?;
 
     let state_path = root.join("state");
-    let state =
-      State::load(state_path).context("couldn't read storage state")?;
+    let state = State::new(state_path);
 
     Ok(Self { root, state })
   }
@@ -32,12 +33,27 @@ impl Storage {
     self.root.join("plugins").join(plugin.id())
   }
 
+  fn is_plugin_downloaded(&self, plugin: &Plugin) -> Fallible<bool> {
+    let result = self
+      .state
+      .is_plugin_downloaded(plugin)
+      .context("couldn't read storage state")?;
+    Ok(result)
+  }
+
   pub fn download_plugin(&mut self, plugin: &Plugin) -> Fallible<()> {
-    if plugin.from == PluginSource::Local {
+    if self.is_plugin_downloaded(plugin)? {
       return Ok(());
     }
 
-    if self.state.is_plugin_downloaded(plugin) {
+    let lock_path = self.root.join("lock");
+    let lock_file = File::create(&lock_path)?;
+    let _lock = exclusively_lock_file(&lock_file).with_context(|_| {
+      format!("couldn't lock file '{}'", lock_path.display())
+    })?;
+
+    // check if another process has just downloaded this plugin
+    if self.is_plugin_downloaded(plugin)? {
       return Ok(());
     }
 
@@ -63,12 +79,25 @@ impl Storage {
     }
     .with_context(|_| format!("couldn't download plugin '{}'", plugin.name))?;
 
-    self.state.add_downloaded_plugin(plugin)?;
+    self
+      .state
+      .add_downloaded_plugin(plugin)
+      .context("couldn't save storage state")?;
 
     log!();
 
     Ok(())
   }
+}
+
+fn exclusively_lock_file(file: &File) -> io::Result<ExclusiveSliceLock> {
+  file.try_exclusive_lock().and_then(|result| match result {
+    Some(lock) => Ok(lock),
+    None => {
+      log!("waiting for another process to unlock the lock file");
+      file.exclusive_lock()
+    }
+  })
 }
 
 fn clone_git_repository(repo: &str, dir: &Path) -> Fallible<()> {

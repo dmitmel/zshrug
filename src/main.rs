@@ -1,5 +1,6 @@
 extern crate failure;
 
+extern crate cluFlock;
 extern crate dirs;
 extern crate globset;
 extern crate md5;
