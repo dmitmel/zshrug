@@ -1,7 +1,9 @@
 extern crate failure;
 
 extern crate dirs;
+extern crate globset;
 extern crate md5;
+extern crate walkdir;
 
 extern crate serde;
 extern crate serde_yaml;
@@ -14,6 +16,7 @@ macro_rules! log {
 }
 
 mod config;
+mod script;
 mod storage;
 
 fn main() {
@@ -63,6 +66,10 @@ fn run() -> Fallible<()> {
   for plugin in &config.plugins {
     storage.download_plugin(plugin)?;
   }
+
+  let script = script::generate(&storage, &config.plugins)
+    .context("couldn't generate script")?;
+  println!("{}", script);
 
   Ok(())
 }

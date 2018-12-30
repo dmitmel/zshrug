@@ -28,7 +28,6 @@ pub struct Plugin {
   pub after_load: String,
 
   #[serde(deserialize_with = "deserialize_patterns")]
-  #[serde(default)]
   pub load: Vec<String>,
 
   #[serde(deserialize_with = "deserialize_patterns")]

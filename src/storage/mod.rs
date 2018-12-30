@@ -28,6 +28,10 @@ impl Storage {
     Ok(Self { root, state })
   }
 
+  pub fn plugin_dir(&self, plugin: &Plugin) -> PathBuf {
+    self.root.join("plugins").join(plugin.id())
+  }
+
   pub fn download_plugin(&mut self, plugin: &Plugin) -> Fallible<()> {
     if plugin.from == PluginSource::Local {
       return Ok(());
@@ -37,7 +41,7 @@ impl Storage {
       return Ok(());
     }
 
-    let plugin_dir = self.root.join(plugin.id());
+    let plugin_dir = self.plugin_dir(plugin);
 
     if plugin_dir.is_dir() {
       fs::remove_dir_all(&plugin_dir).with_context(|_| {
