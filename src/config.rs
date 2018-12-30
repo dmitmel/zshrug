@@ -26,11 +26,13 @@ pub struct Plugin {
   #[serde(default)]
   pub on_load: String,
 
+  #[serde(deserialize_with = "deserialize_patterns")]
   #[serde(default)]
-  pub load: Patterns,
+  pub load: Vec<String>,
 
+  #[serde(deserialize_with = "deserialize_patterns")]
   #[serde(default)]
-  pub ignore: Patterns,
+  pub ignore: Vec<String>,
 }
 
 impl Plugin {
@@ -40,18 +42,16 @@ impl Plugin {
   }
 }
 
-#[derive(Debug, Default)]
-pub struct Patterns(pub Vec<String>);
-
-impl<'de> Deserialize<'de> for Patterns {
-  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+fn deserialize_patterns<'de, D>(
+  deserializer: D,
+) -> Result<Vec<String>, D::Error>
   where
     D: Deserializer<'de>,
   {
     struct PatternsVisitor;
 
     impl<'de> Visitor<'de> for PatternsVisitor {
-      type Value = Patterns;
+    type Value = Vec<String>;
 
       fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(formatter, "string or sequence")
@@ -61,7 +61,7 @@ impl<'de> Deserialize<'de> for Patterns {
       where
         E: de::Error,
       {
-        Ok(Patterns(vec![value.to_string()]))
+      Ok(vec![value.to_string()])
       }
 
       fn visit_seq<A>(self, seq: A) -> Result<Self::Value, A::Error>
@@ -69,13 +69,11 @@ impl<'de> Deserialize<'de> for Patterns {
         A: SeqAccess<'de>,
       {
         Deserialize::deserialize(de::value::SeqAccessDeserializer::new(seq))
-          .map(Patterns)
       }
     }
 
     deserializer.deserialize_any(PatternsVisitor)
   }
-}
 
 #[derive(Debug, Eq, PartialEq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
