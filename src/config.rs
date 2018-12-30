@@ -1,6 +1,7 @@
 use std::fmt;
 
-use serde::de::{self, Deserialize, Deserializer, SeqAccess, Visitor};
+use serde::de::{self, Visitor};
+use serde::{Deserialize, Deserializer};
 
 #[derive(Deserialize, Debug)]
 pub struct Config {
@@ -45,35 +46,35 @@ impl Plugin {
 fn deserialize_patterns<'de, D>(
   deserializer: D,
 ) -> Result<Vec<String>, D::Error>
-  where
-    D: Deserializer<'de>,
-  {
-    struct PatternsVisitor;
+where
+  D: Deserializer<'de>,
+{
+  struct PatternsVisitor;
 
-    impl<'de> Visitor<'de> for PatternsVisitor {
+  impl<'de> Visitor<'de> for PatternsVisitor {
     type Value = Vec<String>;
 
-      fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        write!(formatter, "string or sequence")
-      }
-
-      fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
-      where
-        E: de::Error,
-      {
-      Ok(vec![value.to_string()])
-      }
-
-      fn visit_seq<A>(self, seq: A) -> Result<Self::Value, A::Error>
-      where
-        A: SeqAccess<'de>,
-      {
-        Deserialize::deserialize(de::value::SeqAccessDeserializer::new(seq))
-      }
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+      write!(formatter, "string or sequence")
     }
 
-    deserializer.deserialize_any(PatternsVisitor)
+    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+    where
+      E: de::Error,
+    {
+      Ok(vec![value.to_string()])
+    }
+
+    fn visit_seq<A>(self, seq: A) -> Result<Self::Value, A::Error>
+    where
+      A: de::SeqAccess<'de>,
+    {
+      Deserialize::deserialize(de::value::SeqAccessDeserializer::new(seq))
+    }
   }
+
+  deserializer.deserialize_any(PatternsVisitor)
+}
 
 #[derive(Debug, Eq, PartialEq, Deserialize)]
 #[serde(rename_all = "kebab-case")]

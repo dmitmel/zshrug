@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 use failure::{Error, ResultExt};
 
-use config::Plugin;
+use crate::config::Plugin;
 
 #[derive(Debug)]
 pub struct State {

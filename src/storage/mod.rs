@@ -2,9 +2,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use failure::{Error, ResultExt};
+use failure::*;
 
-use config::*;
+use crate::config::*;
 
 mod state;
 use self::state::State;
@@ -56,7 +56,8 @@ impl Storage {
       PluginSource::Git => clone_git_repository(&plugin.name, &plugin_dir),
       PluginSource::Url => download_file(&plugin.name, &plugin_dir),
       _ => unreachable!(),
-    }.with_context(|_| format!("couldn't download plugin '{}'", plugin.name))?;
+    }
+    .with_context(|_| format!("couldn't download plugin '{}'", plugin.name))?;
 
     self.state.add_downloaded_plugin(plugin)?;
 

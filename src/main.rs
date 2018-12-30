@@ -1,16 +1,12 @@
-#[macro_use]
 extern crate failure;
-extern crate failure_derive;
 
 extern crate dirs;
 extern crate md5;
 
 extern crate serde;
-#[macro_use]
-extern crate serde_derive;
 extern crate serde_yaml;
 
-use failure::{Error, ResultExt};
+use failure::*;
 
 macro_rules! log {
   ()            => { eprintln!() };

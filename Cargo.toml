@@ -1,4 +1,5 @@
 [package]
+edition = "2018"
 publish = false
 name = "zshrug"
 version = "0.1.0"
@@ -12,8 +13,6 @@ readme = "README.md"
 [dependencies]
 dirs = "1.0"
 failure = "0.1"
-failure_derive = "0.1"
 md5 = "0.6"
-serde = "1.0"
-serde_derive = "1.0"
+serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.8"
