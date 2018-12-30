@@ -16,7 +16,7 @@ pub struct Storage {
 }
 
 impl Storage {
-  pub fn init(root: PathBuf) -> Result<Self, Error> {
+  pub fn init(root: PathBuf) -> Fallible<Self> {
     fs::create_dir_all(&root).with_context(|_| {
       format!("couldn't create storage directory '{}'", root.display())
     })?;
@@ -28,7 +28,7 @@ impl Storage {
     Ok(Self { root, state })
   }
 
-  pub fn download_plugin(&mut self, plugin: &Plugin) -> Result<(), Error> {
+  pub fn download_plugin(&mut self, plugin: &Plugin) -> Fallible<()> {
     if plugin.from == PluginSource::Local {
       return Ok(());
     }
@@ -67,7 +67,7 @@ impl Storage {
   }
 }
 
-fn clone_git_repository(repo: &str, dir: &Path) -> Result<(), Error> {
+fn clone_git_repository(repo: &str, dir: &Path) -> Fallible<()> {
   log!("Cloning git repository '{}'...", repo);
 
   let exit_status = Command::new("git")
@@ -81,7 +81,7 @@ fn clone_git_repository(repo: &str, dir: &Path) -> Result<(), Error> {
   Ok(())
 }
 
-fn download_file(url: &str, dir: &Path) -> Result<(), Error> {
+fn download_file(url: &str, dir: &Path) -> Fallible<()> {
   log!("Downloading '{}'...", url);
 
   let exit_status = Command::new("wget")

@@ -40,7 +40,7 @@ fn main() {
   }
 }
 
-fn run() -> Result<(), Error> {
+fn run() -> Fallible<()> {
   let storage_root = dirs::cache_dir()
     .ok_or_else(|| format_err!("couldn't get system cache directory"))?
     .join(env!("CARGO_PKG_NAME"));

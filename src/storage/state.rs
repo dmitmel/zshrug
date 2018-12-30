@@ -4,7 +4,7 @@ use std::fs::{File, OpenOptions};
 use std::io::{self, BufRead, BufReader, BufWriter, Seek, SeekFrom, Write};
 use std::path::PathBuf;
 
-use failure::{Error, ResultExt};
+use failure::*;
 
 use crate::config::Plugin;
 
@@ -16,7 +16,7 @@ pub struct State {
 }
 
 impl State {
-  pub fn load(path: PathBuf) -> Result<Self, Error> {
+  pub fn load(path: PathBuf) -> Fallible<Self> {
     let file: File = OpenOptions::new()
       .read(true)
       .write(true)
@@ -43,10 +43,7 @@ impl State {
     self.downloaded_plugins.contains(&plugin.id())
   }
 
-  pub fn add_downloaded_plugin(
-    &mut self,
-    plugin: &Plugin,
-  ) -> Result<(), Error> {
+  pub fn add_downloaded_plugin(&mut self, plugin: &Plugin) -> Fallible<()> {
     let changed = self.downloaded_plugins.insert(plugin.id());
     if changed {
       self.save().context("couldn't save storage state")?
@@ -54,7 +51,7 @@ impl State {
     Ok(())
   }
 
-  fn save(&mut self) -> Result<(), Error> {
+  fn save(&mut self) -> Fallible<()> {
     self.file.set_len(0).unwrap();
     self.file.seek(SeekFrom::Start(0)).unwrap();
 
