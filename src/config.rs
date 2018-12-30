@@ -19,13 +19,13 @@ pub struct Plugin {
   pub from: PluginSource,
 
   #[serde(default)]
-  pub on_build: String,
+  pub build: String,
 
   #[serde(default)]
-  pub on_setup: String,
+  pub before_load: String,
 
   #[serde(default)]
-  pub on_load: String,
+  pub after_load: String,
 
   #[serde(deserialize_with = "deserialize_patterns")]
   #[serde(default)]
