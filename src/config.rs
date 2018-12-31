@@ -28,7 +28,7 @@ pub struct Plugin {
   pub after_load: String,
 
   #[serde(deserialize_with = "deserialize_patterns")]
-  #[serde(default)]
+  #[serde(default = "default_load_patterns")]
   pub load: Vec<String>,
 
   #[serde(deserialize_with = "deserialize_patterns")]
@@ -41,6 +41,10 @@ impl Plugin {
     let id_str = format!("{:?}:{}", self.from, self.name);
     format!("{:x}", md5::compute(id_str))
   }
+}
+
+fn default_load_patterns() -> Vec<String> {
+  vec!["*.plugin.zsh".to_string(), "*.zsh-theme".to_string()]
 }
 
 fn deserialize_patterns<'de, D>(
