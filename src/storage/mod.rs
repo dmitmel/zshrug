@@ -50,11 +50,12 @@ impl Storage {
 
     let lock_path = self.root.join("lock");
     let lock_file = File::create(&lock_path)?;
-    let _lock = exclusively_lock_file(&lock_file).with_context(|_| {
-      format!("couldn't lock file '{}'", lock_path.display())
-    })?;
+    let (another_process_was_running, _lock) =
+      exclusively_lock_file(&lock_file).with_context(|_| {
+        format!("couldn't lock file '{}'", lock_path.display())
+      })?;
 
-    if self.is_plugin_downloaded(plugin)? {
+    if another_process_was_running && self.is_plugin_downloaded(plugin)? {
       log!("another process has just downloaded this plugin");
       return Ok(());
     }
@@ -90,12 +91,14 @@ impl Storage {
   }
 }
 
-fn exclusively_lock_file(file: &File) -> io::Result<ExclusiveSliceLock> {
+fn exclusively_lock_file(
+  file: &File,
+) -> io::Result<(bool, ExclusiveSliceLock)> {
   file.try_exclusive_lock().and_then(|result| match result {
-    Some(lock) => Ok(lock),
+    Some(lock) => Ok((false, lock)),
     None => {
       log!("waiting for another process to unlock the lock file");
-      file.exclusive_lock()
+      file.exclusive_lock().map(|lock| (true, lock))
     }
   })
 }
