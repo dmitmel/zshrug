@@ -111,6 +111,10 @@ fn exclusively_lock_file(
 }
 
 fn build_plugin(plugin: &Plugin, directory: &Path) -> Fallible<()> {
+  if plugin.build.is_empty() {
+    return Ok(());
+  }
+
   log!("running build command: {}", plugin.build);
 
   let exit_status = Command::new("zsh")
