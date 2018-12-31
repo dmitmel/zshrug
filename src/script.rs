@@ -50,26 +50,24 @@ pub fn generate(storage: &Storage, plugins: &[Plugin]) -> Fallible<String> {
     write_hook!("before_load", plugin.before_load);
 
     write_block!("load", {
-      let ignored = compile_patterns(&plugin.ignore)?;
-      for pattern in &plugin.load {
-        let glob = compile_pattern(pattern)?.compile_matcher();
+      let load = compile_patterns(&plugin.load)?;
+      let ignore = compile_patterns(&plugin.ignore)?;
 
-        for entry in WalkDir::new(&plugin_dir)
-          .sort_by(|a, b| a.file_name().cmp(b.file_name()))
-        {
-          let entry: walkdir::DirEntry = entry.with_context(|_| {
-            format!(
-              "couldn't get plugin directory contents: {}",
-              plugin_dir.display()
-            )
-          })?;
+      for entry in WalkDir::new(&plugin_dir)
+        .sort_by(|a, b| a.file_name().cmp(b.file_name()))
+      {
+        let entry: walkdir::DirEntry = entry.with_context(|_| {
+          format!(
+            "couldn't get plugin directory contents: {}",
+            plugin_dir.display()
+          )
+        })?;
 
-          let full_path = entry.into_path();
-          let short_path = full_path.strip_prefix(&plugin_dir).unwrap();
+        let full_path = entry.into_path();
+        let short_path = full_path.strip_prefix(&plugin_dir).unwrap();
 
-          if glob.is_match(&short_path) && !ignored.is_match(&short_path) {
-            write_script!("source {}", zsh_quote_path(&full_path));
-          }
+        if load.is_match(&short_path) && !ignore.is_match(&short_path) {
+          write_script!("source {}", zsh_quote_path(&full_path));
         }
       }
     });
@@ -90,7 +88,9 @@ fn compile_patterns(patterns: &[String]) -> Fallible<GlobSet> {
   let mut builder = GlobSetBuilder::new();
 
   for pattern in patterns {
-    builder.add(compile_pattern(pattern)?);
+    let glob = Glob::new(&pattern)
+      .with_context(|_| format!("couldn't compile glob: {}", pattern))?;
+    builder.add(glob);
   }
 
   let glob_set = builder
@@ -98,12 +98,6 @@ fn compile_patterns(patterns: &[String]) -> Fallible<GlobSet> {
     .with_context(|_| format!("couldn't compile glob set: {:?}", patterns))?;
 
   Ok(glob_set)
-}
-
-fn compile_pattern(pattern: &str) -> Fallible<Glob> {
-  let glob = Glob::new(&pattern)
-    .with_context(|_| format!("couldn't compile glob: {}", pattern))?;
-  Ok(glob)
 }
 
 fn zsh_quote_path(path: &Path) -> String {
