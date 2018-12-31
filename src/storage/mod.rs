@@ -41,12 +41,12 @@ impl Storage {
     Ok(result)
   }
 
-  pub fn download_plugin(&mut self, plugin: &Plugin) -> Fallible<()> {
+  pub fn ensure_plugin_downloaded(&mut self, plugin: &Plugin) -> Fallible<()> {
     if self.is_plugin_downloaded(plugin)? {
       return Ok(());
     }
 
-    log!("Downloading plugin {:?} from {:?}", plugin.name, plugin.from);
+    log!("downloading plugin {:?} from {:?}", plugin.name, plugin.from);
 
     let lock_path = self.root.join("lock");
     let lock_file = File::create(&lock_path)?;
@@ -54,11 +54,15 @@ impl Storage {
       format!("couldn't lock file '{}'", lock_path.display())
     })?;
 
-    // check if another process has just downloaded this plugin
     if self.is_plugin_downloaded(plugin)? {
+      log!("another process has just downloaded this plugin");
       return Ok(());
     }
 
+    self.download_plugin(plugin)
+  }
+
+  pub fn download_plugin(&mut self, plugin: &Plugin) -> Fallible<()> {
     let plugin_dir = self.plugin_dir(plugin);
 
     if plugin_dir.is_dir() {
@@ -72,18 +76,15 @@ impl Storage {
     })?;
 
     match plugin.from {
-      PluginSource::Git => clone_git_repository(&plugin.name, &plugin_dir),
-      PluginSource::Url => download_file(&plugin.name, &plugin_dir),
+      PluginSource::Git => clone_git_repository(&plugin.name, &plugin_dir)?,
+      PluginSource::Url => download_file(&plugin.name, &plugin_dir)?,
       _ => unreachable!(),
     }
-    .with_context(|_| format!("couldn't download plugin '{}'", plugin.name))?;
 
     self
       .state
       .add_downloaded_plugin(plugin)
       .context("couldn't save storage state")?;
-
-    log!();
 
     Ok(())
   }
@@ -100,7 +101,7 @@ fn exclusively_lock_file(file: &File) -> io::Result<ExclusiveSliceLock> {
 }
 
 fn clone_git_repository(repo: &str, dir: &Path) -> Fallible<()> {
-  log!("Cloning git repository '{}'...", repo);
+  log!("cloning git repository '{}'...", repo);
 
   let exit_status = Command::new("git")
     .arg("clone")
@@ -114,7 +115,7 @@ fn clone_git_repository(repo: &str, dir: &Path) -> Fallible<()> {
 }
 
 fn download_file(url: &str, dir: &Path) -> Fallible<()> {
-  log!("Downloading '{}'...", url);
+  log!("downloading '{}'...", url);
 
   let exit_status = Command::new("wget")
     .arg("--directory-prefix")
@@ -123,6 +124,6 @@ fn download_file(url: &str, dir: &Path) -> Fallible<()> {
     .status()
     .context("couldn't run wget")?;
 
-  ensure!(exit_status.success(), "git has exited with an error");
+  ensure!(exit_status.success(), "wget has exited with an error");
   Ok(())
 }
