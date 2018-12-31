@@ -2,7 +2,7 @@ use cluFlock::{ExclusiveSliceLock, Flock};
 use std::fs::{self, File};
 use std::io;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 use failure::*;
 
@@ -60,12 +60,25 @@ impl Storage {
       return Ok(());
     }
 
-    self.download_plugin(plugin)
+    self.download_plugin(plugin).with_context(|_| {
+      format!("couldn't download plugin {} from {:?}", plugin.name, plugin.from)
+    })?;
+    self.build_plugin(plugin).with_context(|_| {
+      format!("couldn't build plugin {} from {:?}", plugin.name, plugin.from)
+    })?;
+
+    self
+      .state
+      .add_downloaded_plugin(plugin)
+      .context("couldn't save storage state")?;
+
+    Ok(())
   }
 
-  pub fn download_plugin(&mut self, plugin: &Plugin) -> Fallible<()> {
+  fn download_plugin(&self, plugin: &Plugin) -> Fallible<()> {
     let plugin_dir = self.plugin_dir(plugin);
 
+    // clear plugin directory to avoid conflicts and errors
     if plugin_dir.is_dir() {
       fs::remove_dir_all(&plugin_dir).with_context(|_| {
         format!("couldn't clear plugin directory '{}'", plugin_dir.display())
@@ -82,11 +95,21 @@ impl Storage {
       _ => unreachable!(),
     }
 
-    self
-      .state
-      .add_downloaded_plugin(plugin)
-      .context("couldn't save storage state")?;
+    Ok(())
+  }
 
+  fn build_plugin(&self, plugin: &Plugin) -> Fallible<()> {
+    log!("running build command: {}", plugin.build);
+
+    let exit_status = Command::new("zsh")
+      .arg("-c")
+      .arg(&plugin.build)
+      .current_dir(self.plugin_dir(plugin))
+      .stdout(Stdio::null())
+      .status()
+      .context("couldn't run zsh")?;
+
+    ensure!(exit_status.success(), "zsh has exited with an error");
     Ok(())
   }
 }
