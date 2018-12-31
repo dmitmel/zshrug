@@ -38,13 +38,14 @@ pub fn generate(storage: &Storage, plugins: &[Plugin]) -> Fallible<String> {
 
   for plugin in plugins {
     write_script!("### plugin {:?} from {:?}", plugin.name, plugin.from);
-    let plugin_dir = storage.plugin_dir(&plugin);
-    write_script!("zshrug_plugin_dir={}", zsh_quote_path(&plugin_dir));
-    write_script!();
 
     if !plugin.when.is_empty() {
       write_script!("if {}; then", plugin.when);
     }
+
+    let plugin_dir = storage.plugin_dir(&plugin);
+    write_script!("zshrug_plugin_dir={}", zsh_quote_path(&plugin_dir));
+    write_script!();
 
     write_hook!("before_load", plugin.before_load);
 
