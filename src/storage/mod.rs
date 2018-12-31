@@ -60,10 +60,11 @@ impl Storage {
       return Ok(());
     }
 
-    self.download_plugin(plugin).with_context(|_| {
+    let plugin_dir = self.plugin_dir(plugin);
+    download_plugin(plugin, &plugin_dir).with_context(|_| {
       format!("couldn't download plugin {} from {:?}", plugin.name, plugin.from)
     })?;
-    self.build_plugin(plugin).with_context(|_| {
+    build_plugin(plugin, &plugin_dir).with_context(|_| {
       format!("couldn't build plugin {} from {:?}", plugin.name, plugin.from)
     })?;
 
@@ -74,44 +75,27 @@ impl Storage {
 
     Ok(())
   }
+}
 
-  fn download_plugin(&self, plugin: &Plugin) -> Fallible<()> {
-    let plugin_dir = self.plugin_dir(plugin);
-
-    // clear plugin directory to avoid conflicts and errors
-    if plugin_dir.is_dir() {
-      fs::remove_dir_all(&plugin_dir).with_context(|_| {
-        format!("couldn't clear plugin directory '{}'", plugin_dir.display())
-      })?;
-    }
-
-    fs::create_dir_all(&plugin_dir).with_context(|_| {
-      format!("couldn't create plugin directory '{}'", plugin_dir.display())
+fn download_plugin(plugin: &Plugin, directory: &Path) -> Fallible<()> {
+  // clear plugin directory to avoid conflicts and errors
+  if directory.is_dir() {
+    fs::remove_dir_all(&directory).with_context(|_| {
+      format!("couldn't clear plugin directory '{}'", directory.display())
     })?;
-
-    match plugin.from {
-      PluginSource::Git => clone_git_repository(&plugin.name, &plugin_dir)?,
-      PluginSource::Url => download_file(&plugin.name, &plugin_dir)?,
-      _ => unreachable!(),
-    }
-
-    Ok(())
   }
 
-  fn build_plugin(&self, plugin: &Plugin) -> Fallible<()> {
-    log!("running build command: {}", plugin.build);
+  fs::create_dir_all(&directory).with_context(|_| {
+    format!("couldn't create plugin directory '{}'", directory.display())
+  })?;
 
-    let exit_status = Command::new("zsh")
-      .arg("-c")
-      .arg(&plugin.build)
-      .current_dir(self.plugin_dir(plugin))
-      .stdout(Stdio::null())
-      .status()
-      .context("couldn't run zsh")?;
-
-    ensure!(exit_status.success(), "zsh has exited with an error");
-    Ok(())
+  match plugin.from {
+    PluginSource::Git => clone_git_repository(&plugin.name, &directory)?,
+    PluginSource::Url => download_file(&plugin.name, &directory)?,
+    _ => unreachable!(),
   }
+
+  Ok(())
 }
 
 fn exclusively_lock_file(
@@ -126,13 +110,28 @@ fn exclusively_lock_file(
   })
 }
 
-fn clone_git_repository(repo: &str, dir: &Path) -> Fallible<()> {
+fn build_plugin(plugin: &Plugin, directory: &Path) -> Fallible<()> {
+  log!("running build command: {}", plugin.build);
+
+  let exit_status = Command::new("zsh")
+    .arg("-c")
+    .arg(&plugin.build)
+    .current_dir(directory)
+    .stdout(Stdio::null())
+    .status()
+    .context("couldn't run zsh")?;
+
+  ensure!(exit_status.success(), "zsh has exited with an error");
+  Ok(())
+}
+
+fn clone_git_repository(repo: &str, directory: &Path) -> Fallible<()> {
   log!("cloning git repository '{}'...", repo);
 
   let exit_status = Command::new("git")
     .arg("clone")
     .arg(repo)
-    .arg(dir)
+    .arg(directory)
     .status()
     .context("couldn't run git")?;
 
@@ -140,12 +139,12 @@ fn clone_git_repository(repo: &str, dir: &Path) -> Fallible<()> {
   Ok(())
 }
 
-fn download_file(url: &str, dir: &Path) -> Fallible<()> {
+fn download_file(url: &str, directory: &Path) -> Fallible<()> {
   log!("downloading '{}'...", url);
 
   let exit_status = Command::new("wget")
     .arg("--directory-prefix")
-    .arg(dir)
+    .arg(directory)
     .arg(url)
     .status()
     .context("couldn't run wget")?;
