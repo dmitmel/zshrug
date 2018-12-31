@@ -13,7 +13,7 @@ use failure::*;
 
 macro_rules! log {
   ()            => { eprintln!() };
-  ($($arg:tt)*) => { eprintln!("[zshrug] {}", format_args!($($arg)*)) };
+  ($($arg:tt)*) => { eprintln!("\x1b[1m[zshrug]\x1b[0m {}", format_args!($($arg)*)) };
 }
 
 mod config;
