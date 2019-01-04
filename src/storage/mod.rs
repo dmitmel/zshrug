@@ -98,6 +98,16 @@ impl Storage {
   }
 }
 
+fn exclusively_lock_file(file: &File) -> io::Result<ExclusiveSliceLock> {
+  file.try_exclusive_lock().and_then(|result| match result {
+    Some(lock) => Ok(lock),
+    None => {
+      log!("waiting for another process to unlock the lock file");
+      file.exclusive_lock()
+    }
+  })
+}
+
 fn download_plugin(plugin: &Plugin, directory: &Path) -> Fallible<()> {
   // clear plugin directory to avoid conflicts and errors
   if directory.is_dir() {
@@ -117,16 +127,6 @@ fn download_plugin(plugin: &Plugin, directory: &Path) -> Fallible<()> {
   }
 
   Ok(())
-}
-
-fn exclusively_lock_file(file: &File) -> io::Result<ExclusiveSliceLock> {
-  file.try_exclusive_lock().and_then(|result| match result {
-    Some(lock) => Ok(lock),
-    None => {
-      log!("waiting for another process to unlock the lock file");
-      file.exclusive_lock()
-    }
-  })
 }
 
 fn build_plugin(plugin: &Plugin, directory: &Path) -> Fallible<()> {
