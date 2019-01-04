@@ -134,7 +134,7 @@ fn build_plugin(plugin: &Plugin, directory: &Path) -> Fallible<()> {
     .arg("-c")
     .arg(&plugin.build)
     .current_dir(directory)
-    .stdout(Stdio::null())
+    .stdout(stdio_piped_to_stderr())
     .status()
     .context("couldn't run zsh")?;
 
@@ -149,6 +149,7 @@ fn clone_git_repository(repo: &str, directory: &Path) -> Fallible<()> {
     .arg("clone")
     .arg(repo)
     .arg(directory)
+    .stdout(stdio_piped_to_stderr())
     .status()
     .context("couldn't run git")?;
 
@@ -163,9 +164,27 @@ fn download_file(url: &str, directory: &Path) -> Fallible<()> {
     .arg("--directory-prefix")
     .arg(directory)
     .arg(url)
+    .stdout(stdio_piped_to_stderr())
     .status()
     .context("couldn't run wget")?;
 
   ensure!(exit_status.success(), "wget has exited with an error");
   Ok(())
+}
+
+#[cfg(unix)]
+fn stdio_piped_to_stderr() -> Stdio {
+  use std::os::unix::io::{AsRawFd, FromRawFd};
+  unsafe { Stdio::from_raw_fd(io::stderr().as_raw_fd()) }
+}
+
+#[cfg(windows)]
+fn stdio_piped_to_stderr() -> Stdio {
+  use std::os::windows::io::{AsRawHandle, FromRawHandle};
+  unsafe { Stdio::from_raw_handle(io::stderr().as_raw_handle()) }
+}
+
+#[cfg(not(any(unix, windows)))]
+fn stdio_piped_to_stderr() -> Stdio {
+  Stdio::null()
 }
