@@ -41,37 +41,52 @@ impl Storage {
     Ok(result)
   }
 
-  pub fn ensure_plugin_downloaded(&mut self, plugin: &Plugin) -> Fallible<()> {
-    if self.is_plugin_downloaded(plugin)? {
-      return Ok(());
+  pub fn ensure_plugins_installed(
+    &mut self,
+    plugins: &[Plugin],
+  ) -> Fallible<()> {
+    let mut plugins_to_install: Vec<&Plugin> = vec![];
+
+    for plugin in plugins.into_iter() {
+      if !self.is_plugin_downloaded(&plugin)? {
+        plugins_to_install.push(plugin);
+      }
     }
 
-    log!("downloading plugin {:?} from {:?}", plugin.name, plugin.from);
-
-    let lock_path = self.root.join("lock");
-    let lock_file = File::create(&lock_path)?;
-    let (another_process_was_running, _lock) =
-      exclusively_lock_file(&lock_file).with_context(|_| {
+    if !plugins_to_install.is_empty() {
+      let lock_path = self.root.join("lock");
+      let lock_file = File::create(&lock_path)?;
+      let _lock = exclusively_lock_file(&lock_file).with_context(|_| {
         format!("couldn't lock file '{}'", lock_path.display())
       })?;
 
-    if another_process_was_running && self.is_plugin_downloaded(plugin)? {
-      log!("another process has just downloaded this plugin");
-      return Ok(());
+      for plugin in plugins_to_install {
+        if self.is_plugin_downloaded(&plugin)? {
+          continue;
+        }
+
+        log!("downloading plugin {:?} from {:?}", plugin.name, plugin.from);
+
+        let plugin_dir = self.plugin_dir(&plugin);
+        download_plugin(&plugin, &plugin_dir).with_context(|_| {
+          format!(
+            "couldn't download plugin {} from {:?}",
+            plugin.name, plugin.from
+          )
+        })?;
+        build_plugin(&plugin, &plugin_dir).with_context(|_| {
+          format!(
+            "couldn't build plugin {} from {:?}",
+            plugin.name, plugin.from
+          )
+        })?;
+
+        self
+          .state
+          .add_downloaded_plugin(&plugin)
+          .context("couldn't save storage state")?;
+      }
     }
-
-    let plugin_dir = self.plugin_dir(plugin);
-    download_plugin(plugin, &plugin_dir).with_context(|_| {
-      format!("couldn't download plugin {} from {:?}", plugin.name, plugin.from)
-    })?;
-    build_plugin(plugin, &plugin_dir).with_context(|_| {
-      format!("couldn't build plugin {} from {:?}", plugin.name, plugin.from)
-    })?;
-
-    self
-      .state
-      .add_downloaded_plugin(plugin)
-      .context("couldn't save storage state")?;
 
     Ok(())
   }
@@ -98,14 +113,12 @@ fn download_plugin(plugin: &Plugin, directory: &Path) -> Fallible<()> {
   Ok(())
 }
 
-fn exclusively_lock_file(
-  file: &File,
-) -> io::Result<(bool, ExclusiveSliceLock)> {
+fn exclusively_lock_file(file: &File) -> io::Result<ExclusiveSliceLock> {
   file.try_exclusive_lock().and_then(|result| match result {
-    Some(lock) => Ok((false, lock)),
+    Some(lock) => Ok(lock),
     None => {
       log!("waiting for another process to unlock the lock file");
-      file.exclusive_lock().map(|lock| (true, lock))
+      file.exclusive_lock()
     }
   })
 }
