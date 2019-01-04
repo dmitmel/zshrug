@@ -49,7 +49,8 @@ pub fn generate(storage: &Storage, plugins: &[Plugin]) -> Fallible<String> {
       write_script!("if {}; then", plugin.when);
     }
 
-    let plugin_dir = storage.plugin_dir(&plugin);
+    use std::borrow::Cow;
+    let plugin_dir: Cow<Path> = storage.plugin_dir(&plugin);
     write_script!("zshrug_plugin_dir={}", zsh_quote_path(&plugin_dir));
     write_script!();
 

@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use cluFlock::{ExclusiveSliceLock, Flock};
 use std::fs::{self, File};
 use std::io;
@@ -29,8 +31,12 @@ impl Storage {
     Ok(Self { root, state })
   }
 
-  pub fn plugin_dir(&self, plugin: &Plugin) -> PathBuf {
-    self.root.join("plugins").join(plugin.id())
+  pub fn plugin_dir<'p>(&self, plugin: &'p Plugin) -> Cow<'p, Path> {
+    if plugin.from == PluginSource::Local {
+      Cow::Borrowed(Path::new(&plugin.name))
+    } else {
+      Cow::Owned(self.root.join("plugins").join(plugin.id()))
+    }
   }
 
   fn is_plugin_downloaded(&self, plugin: &Plugin) -> Fallible<bool> {
