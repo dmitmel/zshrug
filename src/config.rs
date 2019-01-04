@@ -34,6 +34,15 @@ pub struct Plugin {
   #[serde(deserialize_with = "deserialize_patterns")]
   #[serde(default)]
   pub ignore: Vec<String>,
+
+  #[serde(default)]
+  pub path: Vec<PathArrayChange>,
+
+  #[serde(default)]
+  pub fpath: Vec<PathArrayChange>,
+
+  #[serde(default)]
+  pub manpath: Vec<PathArrayChange>,
 }
 
 impl Plugin {
@@ -92,4 +101,11 @@ impl Default for PluginSource {
   fn default() -> Self {
     PluginSource::Git
   }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum PathArrayChange {
+  Append(String),
+  Prepend(String),
 }

@@ -1,8 +1,3 @@
 {
-  "cSpell.words": [
-    "Bitbucket",
-    "Deserialize",
-    "Deserializer",
-    "serde"
-  ]
+  "cSpell.words": ["prepend", "Deserialize", "Deserializer", "serde"]
 }
