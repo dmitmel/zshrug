@@ -47,8 +47,8 @@ pub struct Plugin {
 
 impl Plugin {
   pub fn id(&self) -> String {
-    let id_str = format!("{:?}:{}", self.from, self.name);
-    format!("{:x}", md5::compute(id_str))
+    let hashed_str = format!("{:?}:{}:{}", self.from, self.name, self.build);
+    format!("{:x}", md5::compute(hashed_str))
   }
 }
 
