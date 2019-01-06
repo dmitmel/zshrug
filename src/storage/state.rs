@@ -1,4 +1,5 @@
-use std::collections::HashSet;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 use std::fs::{File, OpenOptions};
 use std::io::{BufReader, BufWriter};
@@ -8,7 +9,13 @@ use failure::*;
 
 use crate::config::{Plugin, PluginSource};
 
-type StateData = HashSet<String>;
+type StateData = HashMap<String, PluginState>;
+
+#[derive(Eq, PartialEq, Serialize, Deserialize)]
+pub enum PluginState {
+  Downloaded,
+  Built,
+}
 
 #[derive(Debug)]
 pub struct State {
@@ -20,19 +27,26 @@ impl State {
     Self { path }
   }
 
-  pub fn is_plugin_downloaded(&self, plugin: &Plugin) -> Fallible<bool> {
+  pub fn get_plugin_state(
+    &self,
+    plugin: &Plugin,
+  ) -> Fallible<Option<PluginState>> {
     Ok(if plugin.from == PluginSource::Local {
-      true
+      Some(PluginState::Downloaded)
     } else {
-      let downloaded_plugins = self.read()?;
-      downloaded_plugins.contains(&plugin.id())
+      let mut downloaded_plugins = self.read()?;
+      downloaded_plugins.remove(&plugin.id())
     })
   }
 
-  pub fn add_downloaded_plugin(&self, plugin: &Plugin) -> Fallible<()> {
+  pub fn set_plugin_state(
+    &self,
+    plugin: &Plugin,
+    state: PluginState,
+  ) -> Fallible<()> {
     let mut data = self.read()?;
 
-    let changed = data.insert(plugin.id());
+    let changed = data.insert(plugin.id(), state).is_none();
     if changed {
       self.write(&data)?;
     }
@@ -42,7 +56,7 @@ impl State {
 
   fn read(&self) -> Fallible<StateData> {
     if !self.path.exists() {
-      self.write(&HashSet::new())?;
+      self.write(&HashMap::new())?;
     }
 
     let file = self.open()?;

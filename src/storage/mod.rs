@@ -11,7 +11,7 @@ use failure::*;
 use crate::config::*;
 
 mod state;
-use self::state::State;
+use self::state::{PluginState, State};
 
 #[derive(Debug)]
 pub struct Storage {
@@ -39,14 +39,6 @@ impl Storage {
     }
   }
 
-  fn is_plugin_downloaded(&self, plugin: &Plugin) -> Fallible<bool> {
-    let result = self
-      .state
-      .is_plugin_downloaded(plugin)
-      .context("couldn't read storage state")?;
-    Ok(result)
-  }
-
   pub fn ensure_plugins_are_installed<'p>(
     &mut self,
     plugins: &'p [&'p Plugin],
@@ -55,7 +47,7 @@ impl Storage {
     let mut installed_plugins: Vec<&Plugin> = plugins.to_vec();
 
     for plugin in plugins {
-      if !self.is_plugin_downloaded(plugin)? {
+      if self.get_plugin_state(plugin)? != Some(PluginState::Built) {
         plugins_to_install.push(plugin);
       }
     }
@@ -68,10 +60,6 @@ impl Storage {
       })?;
 
       for plugin in plugins_to_install {
-        if self.is_plugin_downloaded(&plugin)? {
-          continue;
-        }
-
         let installation_result =
           self.install_plugin(plugin).with_context(|_| {
             format!(
@@ -94,15 +82,38 @@ impl Storage {
 
   fn install_plugin(&mut self, plugin: &Plugin) -> Fallible<()> {
     let plugin_dir = self.plugin_dir(&plugin);
-    download_plugin(&plugin, &plugin_dir)
-      .context("couldn't download plugin")?;
-    build_plugin(&plugin, &plugin_dir).context("couldn't build plugin")?;
 
+    if self.get_plugin_state(plugin)? == None {
+      download_plugin(&plugin, &plugin_dir)
+        .context("couldn't download plugin")?;
+      self.set_plugin_state(&plugin, PluginState::Downloaded)?;
+    }
+
+    if self.get_plugin_state(plugin)? == Some(PluginState::Downloaded) {
+      build_plugin(&plugin, &plugin_dir).context("couldn't build plugin")?;
+      self.set_plugin_state(&plugin, PluginState::Built)?;
+    }
+
+    Ok(())
+  }
+
+  fn get_plugin_state(&self, plugin: &Plugin) -> Fallible<Option<PluginState>> {
+    let result = self
+      .state
+      .get_plugin_state(plugin)
+      .context("couldn't read storage state")?;
+    Ok(result)
+  }
+
+  fn set_plugin_state(
+    &self,
+    plugin: &Plugin,
+    state: PluginState,
+  ) -> Fallible<()> {
     self
       .state
-      .add_downloaded_plugin(&plugin)
-      .context("couldn't save storage state")?;
-
+      .set_plugin_state(plugin, state)
+      .context("couldn't read storage state")?;
     Ok(())
   }
 }

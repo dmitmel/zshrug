@@ -3,6 +3,7 @@
     "Deserialize",
     "Deserializer",
     "backtrace",
+    "bincode",
     "fpath",
     "globset",
     "manpath",

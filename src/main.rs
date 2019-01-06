@@ -1,3 +1,4 @@
+extern crate bincode;
 extern crate clap;
 extern crate cluFlock;
 extern crate dirs;
