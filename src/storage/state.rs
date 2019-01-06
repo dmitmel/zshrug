@@ -1,12 +1,14 @@
 use std::collections::HashSet;
 
 use std::fs::{File, OpenOptions};
-use std::io::{self, BufRead, BufReader, BufWriter, Write};
+use std::io::{BufReader, BufWriter};
 use std::path::PathBuf;
 
 use failure::*;
 
 use crate::config::{Plugin, PluginSource};
+
+type StateData = HashSet<String>;
 
 #[derive(Debug)]
 pub struct State {
@@ -27,34 +29,40 @@ impl State {
     })
   }
 
-  fn read(&self) -> Fallible<HashSet<String>> {
+  pub fn add_downloaded_plugin(&self, plugin: &Plugin) -> Fallible<()> {
+    let mut data = self.read()?;
+
+    let changed = data.insert(plugin.id());
+    if changed {
+      self.write(&data)?;
+    }
+
+    Ok(())
+  }
+
+  fn read(&self) -> Fallible<StateData> {
+    if !self.path.exists() {
+      self.write(&HashSet::new())?;
+    }
+
     let file = self.open()?;
 
     let reader = BufReader::new(&file);
-    let downloaded_plugins =
-      reader.lines().collect::<io::Result<HashSet<String>>>().with_context(
-        |_| format!("couldn't read file '{}'", self.path.display()),
-      )?;
+    let data: StateData =
+      bincode::deserialize_from(reader).with_context(|_| {
+        format!("couldn't deserialize data from file '{}'", self.path.display())
+      })?;
 
-    Ok(downloaded_plugins)
+    Ok(data)
   }
 
-  pub fn add_downloaded_plugin(&self, plugin: &Plugin) -> Fallible<()> {
-    let mut downloaded_plugins = self.read()?;
+  fn write(&self, data: &StateData) -> Fallible<()> {
+    let file = self.open()?;
 
-    let changed = downloaded_plugins.insert(plugin.id());
-    if changed {
-      let file = self.open()?;
-
-      let mut buf_writer = BufWriter::new(file);
-      for id in &downloaded_plugins {
-        writeln!(buf_writer, "{}", id).with_context(|_| {
-          format!("couldn't write to file '{}'", self.path.display())
-        })?;
-      }
-
-      buf_writer.flush().unwrap();
-    }
+    let writer = BufWriter::new(file);
+    bincode::serialize_into(writer, data).with_context(|_| {
+      format!("couldn't serialize data into file '{}'", self.path.display())
+    })?;
 
     Ok(())
   }
