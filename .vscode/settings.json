@@ -1,3 +1,14 @@
 {
-  "cSpell.words": ["prepend", "Deserialize", "Deserializer", "serde"]
+  "cSpell.words": [
+    "Deserialize",
+    "Deserializer",
+    "backtrace",
+    "fpath",
+    "globset",
+    "manpath",
+    "prepend",
+    "serde",
+    "walkdir",
+    "zshrug"
+  ]
 }
