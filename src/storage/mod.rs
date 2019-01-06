@@ -188,4 +188,3 @@ fn download_file(url: &str, directory: &Path) -> Fallible<()> {
   ensure!(exit_status.success(), "wget has exited with an error");
   Ok(())
 }
-
