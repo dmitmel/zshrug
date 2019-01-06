@@ -21,25 +21,8 @@ mod storage;
 
 fn main() {
   if let Err(error) = run() {
-    use std::{process, thread};
-
-    let thread = thread::current();
-    let name = thread.name().unwrap_or("<unnamed>");
-
-    error!("error in thread '{}': {}", name, error);
-
-    for cause in error.iter_causes() {
-      error!("caused by: {}", cause);
-    }
-
-    let backtrace = error.backtrace().to_string();
-    if backtrace.is_empty() {
-      error!("note: Run with `RUST_BACKTRACE=1` for a backtrace.");
-    } else {
-      error!("{}", backtrace);
-    }
-
-    process::exit(1);
+    log::log_error(error.as_ref());
+    std::process::exit(1);
   }
 }
 
