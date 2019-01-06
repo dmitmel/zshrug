@@ -9,6 +9,8 @@ extern crate walkdir;
 extern crate serde;
 extern crate serde_yaml;
 
+use std::path::PathBuf;
+
 use failure::*;
 
 macro_rules! log {
@@ -45,9 +47,8 @@ fn main() {
 }
 
 fn run() -> Fallible<()> {
-  let storage_root = dirs::cache_dir()
-    .ok_or_else(|| format_err!("couldn't get system cache directory"))?
-    .join(env!("CARGO_PKG_NAME"));
+  let storage_root =
+    get_storage_root().context("couldn't get storage root directory")?;
   let mut storage = storage::Storage::init(storage_root)
     .context("couldn't initialize storage")?;
 
@@ -71,4 +72,26 @@ fn run() -> Fallible<()> {
   println!("{}", script);
 
   Ok(())
+}
+
+fn get_storage_root() -> Fallible<PathBuf> {
+  fn get_path_from_env(name: &str) -> Option<PathBuf> {
+    use std::env;
+    env::var_os(name).map(PathBuf::from)
+  }
+
+  Ok(if let Some(storage_root) = get_path_from_env("ZSHRUG_STORAGE_ROOT") {
+    storage_root
+  } else {
+    // this is a simplified version of dirs::data_local_dir
+
+    let home_dir = dirs::home_dir()
+      .ok_or_else(|| format_err!("couldn't get your home directory"))?;
+
+    let local_data_dir = get_path_from_env("XDG_DATA_HOME")
+      .filter(|xdg_data_home| xdg_data_home.is_absolute())
+      .unwrap_or_else(|| home_dir.join(".local").join("share"));
+
+    local_data_dir.join("zshrug")
+  })
 }
