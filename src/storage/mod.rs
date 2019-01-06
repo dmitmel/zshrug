@@ -47,14 +47,15 @@ impl Storage {
     Ok(result)
   }
 
-  pub fn ensure_plugins_installed(
+  pub fn ensure_plugins_are_installed<'p>(
     &mut self,
-    plugins: &[Plugin],
-  ) -> Fallible<()> {
+    plugins: &'p [&'p Plugin],
+  ) -> Fallible<Vec<&'p Plugin>> {
     let mut plugins_to_install: Vec<&Plugin> = vec![];
+    let mut installed_plugins: Vec<&Plugin> = plugins.to_vec();
 
-    for plugin in plugins.into_iter() {
-      if !self.is_plugin_downloaded(&plugin)? {
+    for plugin in plugins {
+      if !self.is_plugin_downloaded(plugin)? {
         plugins_to_install.push(plugin);
       }
     }
@@ -71,26 +72,36 @@ impl Storage {
           continue;
         }
 
-        let plugin_dir = self.plugin_dir(&plugin);
-        download_plugin(&plugin, &plugin_dir).with_context(|_| {
-          format!(
-            "couldn't download plugin {} from {:?}",
-            plugin.name, plugin.from
-          )
-        })?;
-        build_plugin(&plugin, &plugin_dir).with_context(|_| {
-          format!(
-            "couldn't build plugin {} from {:?}",
-            plugin.name, plugin.from
-          )
-        })?;
+        let installation_result =
+          self.install_plugin(plugin).with_context(|_| {
+            format!(
+              "couldn't install plugin {:?} from {:?}",
+              plugin.name, plugin.from
+            )
+          });
 
-        self
-          .state
-          .add_downloaded_plugin(&plugin)
-          .context("couldn't save storage state")?;
+        if let Err(plugin_error) = installation_result {
+          installed_plugins.remove(
+            installed_plugins.iter().position(|x| *x == plugin).unwrap(),
+          );
+          crate::log::log_error(&plugin_error);
+        }
       }
     }
+
+    Ok(installed_plugins)
+  }
+
+  fn install_plugin(&mut self, plugin: &Plugin) -> Fallible<()> {
+    let plugin_dir = self.plugin_dir(&plugin);
+    download_plugin(&plugin, &plugin_dir)
+      .context("couldn't download plugin")?;
+    build_plugin(&plugin, &plugin_dir).context("couldn't build plugin")?;
+
+    self
+      .state
+      .add_downloaded_plugin(&plugin)
+      .context("couldn't save storage state")?;
 
     Ok(())
   }

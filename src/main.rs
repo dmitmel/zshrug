@@ -45,9 +45,10 @@ fn run() -> Fallible<()> {
   let config: config::Config =
     serde_yaml::from_str(&input).context("couldn't parse config")?;
 
-  storage.ensure_plugins_installed(&config.plugins)?;
+  let plugins: Vec<&config::Plugin> = config.plugins.iter().collect();
+  let installed_plugins = storage.ensure_plugins_are_installed(&plugins)?;
 
-  let script = script::generate(&storage, &config.plugins)
+  let script = script::generate(&storage, &installed_plugins)
     .context("couldn't generate script")?;
   println!("{}", script);
 

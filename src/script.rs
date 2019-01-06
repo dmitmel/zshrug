@@ -10,7 +10,7 @@ use crate::storage::Storage;
 
 const PLUGIN_PATH_VAR_NAME: &str = "zshrug_plugin_path";
 
-pub fn generate(storage: &Storage, plugins: &[Plugin]) -> Fallible<String> {
+pub fn generate(storage: &Storage, plugins: &[&Plugin]) -> Fallible<String> {
   let mut script = String::new();
 
   macro_rules! write_script {

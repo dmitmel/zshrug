@@ -8,7 +8,7 @@ pub struct Config {
   pub plugins: Vec<Plugin>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Eq, PartialEq, Deserialize)]
 pub struct Plugin {
   #[serde(default)]
   pub when: String,
@@ -103,7 +103,7 @@ impl Default for PluginSource {
   }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Eq, PartialEq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum PathArrayChange {
   Append(String),
