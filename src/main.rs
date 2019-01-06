@@ -1,13 +1,12 @@
-extern crate failure;
-
+extern crate clap;
 extern crate cluFlock;
 extern crate dirs;
+extern crate failure;
 extern crate globset;
 extern crate md5;
-extern crate walkdir;
-
 extern crate serde;
 extern crate serde_yaml;
+extern crate walkdir;
 
 use std::path::PathBuf;
 
@@ -15,6 +14,7 @@ use failure::*;
 
 #[macro_use]
 mod log;
+mod cli;
 mod config;
 mod script;
 mod storage;
@@ -27,30 +27,42 @@ fn main() {
 }
 
 fn run() -> Fallible<()> {
+  use self::cli::{Command, Options};
+
+  let options: Options = cli::parse_options();
+
   let storage_root =
     get_storage_root().context("couldn't get storage root directory")?;
-  let mut storage = storage::Storage::init(storage_root)
+  let mut storage = storage::Storage::init(&storage_root)
     .context("couldn't initialize storage")?;
 
-  let input: String = {
-    use std::io::{self, Read};
+  match options.command {
+    Command::Init => {
+      let input: String = {
+        use std::io::{self, Read};
 
-    let mut buffer = String::new();
-    io::stdin()
-      .read_to_string(&mut buffer)
-      .context("couldn't read config from stdin")?;
-    buffer
-  };
+        let mut buffer = String::new();
+        io::stdin()
+          .read_to_string(&mut buffer)
+          .context("couldn't read config from stdin")?;
+        buffer
+      };
 
-  let config: config::Config =
-    serde_yaml::from_str(&input).context("couldn't parse config")?;
+      let config: config::Config =
+        serde_yaml::from_str(&input).context("couldn't parse config")?;
 
-  let plugins: Vec<&config::Plugin> = config.plugins.iter().collect();
-  let installed_plugins = storage.ensure_plugins_are_installed(&plugins)?;
+      let plugins: Vec<&config::Plugin> = config.plugins.iter().collect();
+      let installed_plugins = storage.ensure_plugins_are_installed(&plugins)?;
 
-  let script = script::generate(&storage, &installed_plugins)
-    .context("couldn't generate script")?;
-  println!("{}", script);
+      let script = script::generate(&storage, &installed_plugins)
+        .context("couldn't generate script")?;
+      println!("{}", script);
+    }
+
+    Command::Storage => println!("{}", storage_root.display()),
+
+    _ => bail!("command is not supported"),
+  }
 
   Ok(())
 }

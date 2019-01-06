@@ -8,6 +8,7 @@
     "manpath",
     "prepend",
     "serde",
+    "subcommand",
     "walkdir",
     "zshrug"
   ]

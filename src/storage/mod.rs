@@ -20,15 +20,15 @@ pub struct Storage {
 }
 
 impl Storage {
-  pub fn init(root: PathBuf) -> Fallible<Self> {
-    fs::create_dir_all(&root).with_context(|_| {
+  pub fn init(root: &Path) -> Fallible<Self> {
+    fs::create_dir_all(root).with_context(|_| {
       format!("couldn't create storage directory '{}'", root.display())
     })?;
 
     let state_path = root.join("state");
     let state = State::new(state_path);
 
-    Ok(Self { root, state })
+    Ok(Self { root: root.to_path_buf(), state })
   }
 
   pub fn plugin_dir<'p>(&self, plugin: &'p Plugin) -> Cow<'p, Path> {
