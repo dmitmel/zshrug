@@ -71,8 +71,6 @@ impl Storage {
           continue;
         }
 
-        log!("downloading plugin {:?} from {:?}", plugin.name, plugin.from);
-
         let plugin_dir = self.plugin_dir(&plugin);
         download_plugin(&plugin, &plugin_dir).with_context(|_| {
           format!(
@@ -102,13 +100,15 @@ fn exclusively_lock_file(file: &File) -> io::Result<ExclusiveSliceLock> {
   file.try_exclusive_lock().and_then(|result| match result {
     Some(lock) => Ok(lock),
     None => {
-      log!("waiting for another process to unlock the lock file");
+      info!("waiting for another process to unlock the lock file");
       file.exclusive_lock()
     }
   })
 }
 
 fn download_plugin(plugin: &Plugin, directory: &Path) -> Fallible<()> {
+  info!("downloading plugin {:?} from {:?}", plugin.name, plugin.from);
+
   // clear plugin directory to avoid conflicts and errors
   if directory.is_dir() {
     fs::remove_dir_all(&directory).with_context(|_| {
@@ -134,7 +134,7 @@ fn build_plugin(plugin: &Plugin, directory: &Path) -> Fallible<()> {
     return Ok(());
   }
 
-  log!("running build command: {}", plugin.build);
+  info!("running build command: {}", plugin.build);
 
   let exit_status = Command::new("zsh")
     .arg("-c")
@@ -149,7 +149,7 @@ fn build_plugin(plugin: &Plugin, directory: &Path) -> Fallible<()> {
 }
 
 fn clone_git_repository(repo: &str, directory: &Path) -> Fallible<()> {
-  log!("cloning git repository '{}'...", repo);
+  info!("cloning git repository '{}'...", repo);
 
   let exit_status = Command::new("git")
     .arg("clone")
@@ -164,7 +164,7 @@ fn clone_git_repository(repo: &str, directory: &Path) -> Fallible<()> {
 }
 
 fn download_file(url: &str, directory: &Path) -> Fallible<()> {
-  log!("downloading '{}'...", url);
+  info!("downloading '{}'...", url);
 
   let exit_status = Command::new("wget")
     .arg("--directory-prefix")

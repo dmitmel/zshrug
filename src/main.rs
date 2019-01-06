@@ -13,11 +13,8 @@ use std::path::PathBuf;
 
 use failure::*;
 
-macro_rules! log {
-  ()            => { eprintln!() };
-  ($($arg:tt)*) => { eprintln!("\x1b[1m[zshrug]\x1b[0m {}", format_args!($($arg)*)) };
-}
-
+#[macro_use]
+mod log;
 mod config;
 mod script;
 mod storage;
@@ -29,17 +26,17 @@ fn main() {
     let thread = thread::current();
     let name = thread.name().unwrap_or("<unnamed>");
 
-    log!("error in thread '{}': {}", name, error);
+    error!("error in thread '{}': {}", name, error);
 
     for cause in error.iter_causes() {
-      log!("caused by: {}", cause);
+      error!("caused by: {}", cause);
     }
 
     let backtrace = error.backtrace().to_string();
     if backtrace.is_empty() {
-      log!("note: Run with `RUST_BACKTRACE=1` for a backtrace.");
+      error!("note: Run with `RUST_BACKTRACE=1` for a backtrace.");
     } else {
-      log!("{}", backtrace);
+      error!("{}", backtrace);
     }
 
     process::exit(1);
