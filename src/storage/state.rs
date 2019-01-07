@@ -11,7 +11,7 @@ use crate::config::{Plugin, PluginSource};
 
 type StateData = HashMap<String, PluginState>;
 
-#[derive(Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum PluginState {
   Downloaded,
   Built,
@@ -34,8 +34,8 @@ impl State {
     Ok(if plugin.from == PluginSource::Local {
       Some(PluginState::Downloaded)
     } else {
-      let mut downloaded_plugins = self.read()?;
-      downloaded_plugins.remove(&plugin.id())
+      let mut data = self.read()?;
+      data.remove(&plugin.id())
     })
   }
 
@@ -45,11 +45,8 @@ impl State {
     state: PluginState,
   ) -> Fallible<()> {
     let mut data = self.read()?;
-
-    let changed = data.insert(plugin.id(), state).is_none();
-    if changed {
-      self.write(&data)?;
-    }
+    data.insert(plugin.id(), state);
+    self.write(&data)?;
 
     Ok(())
   }
