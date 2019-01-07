@@ -47,7 +47,7 @@ impl Storage {
     let mut installed_plugins: Vec<&Plugin> = plugins.to_vec();
 
     for plugin in plugins {
-      if self.get_plugin_state(plugin)? != Some(PluginState::Built) {
+      if self.get_plugin_state(plugin)? != PluginState::Built {
         plugins_to_install.push(plugin);
       }
     }
@@ -83,13 +83,13 @@ impl Storage {
   fn install_plugin(&mut self, plugin: &Plugin) -> Fallible<()> {
     let plugin_dir = self.plugin_dir(&plugin);
 
-    if self.get_plugin_state(plugin)? == None {
+    if self.get_plugin_state(plugin)? == PluginState::NotDownloaded {
       download_plugin(&plugin, &plugin_dir)
         .context("couldn't download plugin")?;
       self.set_plugin_state(&plugin, PluginState::Downloaded)?;
     }
 
-    if self.get_plugin_state(plugin)? == Some(PluginState::Downloaded) {
+    if self.get_plugin_state(plugin)? == PluginState::Downloaded {
       build_plugin(&plugin, &plugin_dir).context("couldn't build plugin")?;
       self.set_plugin_state(&plugin, PluginState::Built)?;
     }
@@ -97,7 +97,7 @@ impl Storage {
     Ok(())
   }
 
-  fn get_plugin_state(&self, plugin: &Plugin) -> Fallible<Option<PluginState>> {
+  fn get_plugin_state(&self, plugin: &Plugin) -> Fallible<PluginState> {
     let result = self
       .state
       .get_plugin_state(plugin)

@@ -13,6 +13,7 @@ type StateData = HashMap<String, PluginState>;
 
 #[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum PluginState {
+  NotDownloaded,
   Downloaded,
   Built,
 }
@@ -27,15 +28,12 @@ impl State {
     Self { path }
   }
 
-  pub fn get_plugin_state(
-    &self,
-    plugin: &Plugin,
-  ) -> Fallible<Option<PluginState>> {
+  pub fn get_plugin_state(&self, plugin: &Plugin) -> Fallible<PluginState> {
     Ok(if plugin.from == PluginSource::Local {
-      Some(PluginState::Downloaded)
+      PluginState::Downloaded
     } else {
       let mut data = self.read()?;
-      data.remove(&plugin.id())
+      data.remove(&plugin.id()).unwrap_or(PluginState::NotDownloaded)
     })
   }
 
