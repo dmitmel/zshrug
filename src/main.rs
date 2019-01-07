@@ -1,3 +1,8 @@
+use std::alloc::System;
+
+#[global_allocator]
+static A: System = System;
+
 extern crate bincode;
 extern crate clap;
 extern crate cluFlock;
