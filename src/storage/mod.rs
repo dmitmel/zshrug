@@ -169,8 +169,16 @@ fn build_plugin(plugin: &Plugin, directory: &Path) -> Fallible<()> {
 fn clone_git_repository(repo: &str, directory: &Path) -> Fallible<()> {
   info!("cloning git repository '{}'...", repo);
 
-  run_command(Command::new("git").arg("clone").arg(repo).arg(directory))
-    .context("couldn't run git")?;
+  run_command(
+    Command::new("git")
+      .arg("clone")
+      .arg("--depth")
+      .arg("1")
+      .arg("--recurse-submodules")
+      .arg(repo)
+      .arg(directory),
+  )
+  .context("couldn't run git")?;
 
   Ok(())
 }
