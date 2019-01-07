@@ -158,44 +158,46 @@ fn build_plugin(plugin: &Plugin, directory: &Path) -> Fallible<()> {
 
   info!("running build command: {}", plugin.build);
 
-  let exit_status = Command::new("zsh")
-    .arg("-c")
-    .arg(&plugin.build)
-    .current_dir(directory)
-    .stdout(Stdio::null())
-    .status()
-    .context("couldn't run zsh")?;
+  run_command(
+    Command::new("zsh").arg("-c").arg(&plugin.build).current_dir(directory),
+  )
+  .context("couldn't run zsh script")?;
 
-  ensure!(exit_status.success(), "zsh has exited with an error");
   Ok(())
 }
 
 fn clone_git_repository(repo: &str, directory: &Path) -> Fallible<()> {
   info!("cloning git repository '{}'...", repo);
 
-  let exit_status = Command::new("git")
-    .arg("clone")
-    .arg(repo)
-    .arg(directory)
-    .stdout(Stdio::null())
-    .status()
+  run_command(Command::new("git").arg("clone").arg(repo).arg(directory))
     .context("couldn't run git")?;
 
-  ensure!(exit_status.success(), "git has exited with an error");
   Ok(())
 }
 
 fn download_file(url: &str, directory: &Path) -> Fallible<()> {
   info!("downloading '{}'...", url);
 
-  let exit_status = Command::new("wget")
-    .arg("--directory-prefix")
-    .arg(directory)
-    .arg(url)
-    .stdout(Stdio::null())
-    .status()
-    .context("couldn't run wget")?;
+  run_command(
+    Command::new("wget").arg("--directory-prefix").arg(directory).arg(url),
+  )
+  .context("couldn't run wget")?;
 
-  ensure!(exit_status.success(), "wget has exited with an error");
+  Ok(())
+}
+
+fn run_command(command: &mut Command) -> Fallible<()> {
+  command
+    .stdin(Stdio::inherit())
+    .stdout(
+      os_pipe::dup_stderr()
+        .context("couldn't create pipe to stderr of this process")?,
+    )
+    .stderr(Stdio::inherit());
+
+  let exit_status = command.status().context("couldn't start child process")?;
+
+  ensure!(exit_status.success(), "child process has exited with an error");
+
   Ok(())
 }

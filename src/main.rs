@@ -5,6 +5,7 @@ extern crate dirs;
 extern crate failure;
 extern crate globset;
 extern crate md5;
+extern crate os_pipe;
 extern crate serde;
 extern crate serde_yaml;
 extern crate walkdir;
