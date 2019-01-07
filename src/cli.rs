@@ -1,6 +1,6 @@
 const INIT_COMMAND: &str = "init";
 const LIST_COMMAND: &str = "list";
-const UPDATE_COMMAND: &str = "update";
+const UPGRADE_COMMAND: &str = "upgrade";
 const STORAGE_COMMAND: &str = "storage";
 const CLEANUP_COMMAND: &str = "cleanup";
 const COMPLETION_COMMAND: &str = "completion";
@@ -12,7 +12,7 @@ pub struct Options {
 pub enum Command {
   Init,
   List,
-  Update,
+  Upgrade,
   Storage,
   Cleanup,
 }
@@ -24,7 +24,7 @@ pub fn parse_options() -> Options {
   let command = match matches.subcommand() {
     (INIT_COMMAND, Some(_init_matches)) => Command::Init,
     (LIST_COMMAND, Some(_list_matches)) => Command::List,
-    (UPDATE_COMMAND, Some(_update_matches)) => Command::Update,
+    (UPGRADE_COMMAND, Some(_upgrade_matches)) => Command::Upgrade,
     (STORAGE_COMMAND, Some(_storage_matches)) => Command::Storage,
     (CLEANUP_COMMAND, Some(_cleanup_matches)) => Command::Cleanup,
     (COMPLETION_COMMAND, Some(_completion_matches)) => {
@@ -53,7 +53,7 @@ fn create_parser() -> clap::App<'static, 'static> {
       SubCommand::with_name(LIST_COMMAND).about("lists active plugins"),
     )
     .subcommand(
-      SubCommand::with_name(UPDATE_COMMAND).about("updates active plugins"),
+      SubCommand::with_name(UPGRADE_COMMAND).about("upgrades active plugins"),
     )
     .subcommand(
       SubCommand::with_name(STORAGE_COMMAND)
