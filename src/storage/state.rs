@@ -19,11 +19,11 @@ pub enum PluginState {
 }
 
 #[derive(Debug)]
-pub struct State {
+pub struct StateFile {
   path: PathBuf,
 }
 
-impl State {
+impl StateFile {
   pub fn new(path: PathBuf) -> Self {
     Self { path }
   }
@@ -51,14 +51,14 @@ impl State {
 
   fn read(&self) -> Fallible<StateData> {
     if !self.path.exists() {
-      self.write(&HashMap::new())?;
+      self.write(&StateData::default())?;
     }
 
     let file = self.open()?;
 
-    let reader = BufReader::new(&file);
+    let reader = BufReader::new(file);
     let data: StateData =
-      bincode::deserialize_from(reader).with_context(|_| {
+      serde_yaml::from_reader(reader).with_context(|_| {
         format!("couldn't deserialize data from file '{}'", self.path.display())
       })?;
 
@@ -67,9 +67,10 @@ impl State {
 
   fn write(&self, data: &StateData) -> Fallible<()> {
     let file = self.open()?;
+    file.set_len(0).unwrap();
 
     let writer = BufWriter::new(file);
-    bincode::serialize_into(writer, data).with_context(|_| {
+    serde_yaml::to_writer(writer, data).with_context(|_| {
       format!("couldn't serialize data into file '{}'", self.path.display())
     })?;
 

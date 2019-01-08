@@ -11,12 +11,12 @@ use failure::*;
 use crate::config::*;
 
 mod state;
-use self::state::{PluginState, State};
+use self::state::{PluginState, StateFile};
 
 #[derive(Debug)]
 pub struct Storage {
   root: PathBuf,
-  state: State,
+  state: StateFile,
 }
 
 impl Storage {
@@ -25,8 +25,8 @@ impl Storage {
       format!("couldn't create storage directory '{}'", root.display())
     })?;
 
-    let state_path = root.join("state");
-    let state = State::new(state_path);
+    let state_path = root.join("state.yml");
+    let state = StateFile::new(state_path);
 
     Ok(Self { root: root.to_path_buf(), state })
   }
