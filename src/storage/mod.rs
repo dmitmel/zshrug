@@ -9,6 +9,7 @@ use std::process::{Command, Stdio};
 use failure::*;
 
 use crate::config::*;
+use crate::log;
 
 mod state;
 use self::state::{PluginState, StateFile};
@@ -20,15 +21,16 @@ pub struct Storage {
 }
 
 impl Storage {
-  pub fn init(root: &Path) -> Fallible<Self> {
-    fs::create_dir_all(root).with_context(|_| {
+  pub fn init(root: PathBuf) -> Fallible<Self> {
+    fs::create_dir_all(&root).with_context(|_| {
       format!("couldn't create storage directory '{}'", root.display())
     })?;
 
     let state_path = root.join("state.yml");
-    let state = StateFile::new(state_path);
+    let state =
+      StateFile::init(state_path).context("couldn't read storage state")?;
 
-    Ok(Self { root: root.to_path_buf(), state })
+    Ok(Self { root: root, state })
   }
 
   pub fn plugin_dir<'p>(&self, plugin: &'p Plugin) -> Cow<'p, Path> {
@@ -59,6 +61,8 @@ impl Storage {
         format!("couldn't lock file '{}'", lock_path.display())
       })?;
 
+      self.state.read()?;
+
       for plugin in plugins_to_install {
         let installation_result =
           self.install_plugin(plugin).with_context(|_| {
@@ -72,7 +76,7 @@ impl Storage {
           installed_plugins.remove(
             installed_plugins.iter().position(|x| *x == plugin).unwrap(),
           );
-          crate::log::log_error(&plugin_error);
+          log::log_error(&plugin_error);
         }
       }
     }
@@ -106,7 +110,7 @@ impl Storage {
   }
 
   fn set_plugin_state(
-    &self,
+    &mut self,
     plugin: &Plugin,
     state: PluginState,
   ) -> Fallible<()> {

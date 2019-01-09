@@ -11,7 +11,7 @@ use crate::config::{Plugin, PluginSource};
 
 type StateData = HashMap<String, PluginState>;
 
-#[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum PluginState {
   NotDownloaded,
   Downloaded,
@@ -21,56 +21,58 @@ pub enum PluginState {
 #[derive(Debug)]
 pub struct StateFile {
   path: PathBuf,
+  data: StateData,
 }
 
 impl StateFile {
-  pub fn new(path: PathBuf) -> Self {
-    Self { path }
+  pub fn init(path: PathBuf) -> Fallible<Self> {
+    let mut state = Self { path, data: StateData::default() };
+
+    if !state.path.exists() {
+      state.write()?;
+    } else {
+      state.read()?;
+    }
+
+    Ok(state)
   }
 
   pub fn get_plugin_state(&self, plugin: &Plugin) -> Fallible<PluginState> {
     Ok(if plugin.from == PluginSource::Local {
       PluginState::Downloaded
     } else {
-      let mut data = self.read()?;
-      data.remove(&plugin.id()).unwrap_or(PluginState::NotDownloaded)
+      self.data.get(&plugin.id()).cloned().unwrap_or(PluginState::NotDownloaded)
     })
   }
 
   pub fn set_plugin_state(
-    &self,
+    &mut self,
     plugin: &Plugin,
     state: PluginState,
   ) -> Fallible<()> {
-    let mut data = self.read()?;
-    data.insert(plugin.id(), state);
-    self.write(&data)?;
+    self.data.insert(plugin.id(), state);
+    self.write()?;
 
     Ok(())
   }
 
-  fn read(&self) -> Fallible<StateData> {
-    if !self.path.exists() {
-      self.write(&StateData::default())?;
-    }
-
+  pub fn read(&mut self) -> Fallible<()> {
     let file = self.open()?;
 
     let reader = BufReader::new(file);
-    let data: StateData =
-      serde_yaml::from_reader(reader).with_context(|_| {
-        format!("couldn't deserialize data from file '{}'", self.path.display())
-      })?;
+    self.data = serde_yaml::from_reader(reader).with_context(|_| {
+      format!("couldn't deserialize data from file '{}'", self.path.display())
+    })?;
 
-    Ok(data)
+    Ok(())
   }
 
-  fn write(&self, data: &StateData) -> Fallible<()> {
+  pub fn write(&mut self) -> Fallible<()> {
     let file = self.open()?;
     file.set_len(0).unwrap();
 
     let writer = BufWriter::new(file);
-    serde_yaml::to_writer(writer, data).with_context(|_| {
+    serde_yaml::to_writer(writer, &self.data).with_context(|_| {
       format!("couldn't serialize data into file '{}'", self.path.display())
     })?;
 

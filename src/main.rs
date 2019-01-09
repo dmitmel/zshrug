@@ -39,7 +39,7 @@ fn run() -> Fallible<()> {
 
   let storage_root =
     get_storage_root().context("couldn't get storage root directory")?;
-  let mut storage = storage::Storage::init(&storage_root)
+  let mut storage = storage::Storage::init(storage_root.clone())
     .context("couldn't initialize storage")?;
 
   match options.command {
