@@ -11,6 +11,7 @@ const LOAD_PATTERNS_VAR_NAME: &str = "zshrug_load_patterns";
 const IGNORE_PATTERNS_VAR_NAME: &str = "zshrug_ignore_patterns";
 const SCRIPT_PATH_VAR_NAME: &str = "zshrug_script_path";
 const IGNORE_PATTERN_VAR_NAME: &str = "zshrug_ignore_pattern";
+const SOURCE_FUNC_NAME: &str = "zshrug_source";
 
 pub fn generate(storage: &Storage, plugins: &[&Plugin]) -> Fallible<String> {
   let mut script = String::new();
@@ -39,6 +40,17 @@ pub fn generate(storage: &Storage, plugins: &[&Plugin]) -> Fallible<String> {
       }
     };
   }
+
+  write_script!(
+    r#"
+{source_func_name}() {{
+  local file="$1"; shift
+  [[ -d "$file" ]] && file=$(echo "$file"/*.(plugin.zsh|zsh-theme)(N[1]))
+  [[ -n "$file" ]] && source "$file" "$@"
+}}
+"#,
+    source_func_name = SOURCE_FUNC_NAME,
+  );
 
   for plugin in plugins {
     write_script!("### plugin {:?} from {:?}", plugin.name, plugin.from);
@@ -92,7 +104,11 @@ pub fn generate(storage: &Storage, plugins: &[&Plugin]) -> Fallible<String> {
           write_script!("unset {}", IGNORE_PATTERN_VAR_NAME);
         }
 
-        write_script!("source \"${}\"", SCRIPT_PATH_VAR_NAME);
+        write_script!(
+          "{source_func_name} \"${script_path_var}\"",
+          source_func_name = SOURCE_FUNC_NAME,
+          script_path_var = SCRIPT_PATH_VAR_NAME,
+        );
         write_script!("done");
         write_script!("unset {}", SCRIPT_PATH_VAR_NAME);
       });

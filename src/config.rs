@@ -53,7 +53,7 @@ impl Plugin {
 }
 
 fn default_load_patterns() -> Vec<String> {
-  vec!["*.plugin.zsh".to_string(), "*.zsh-theme".to_string()]
+  vec![".".to_string()]
 }
 
 fn deserialize_patterns<'de, D>(
