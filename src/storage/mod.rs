@@ -30,7 +30,7 @@ impl Storage {
     let state =
       StateFile::init(state_path).context("couldn't read storage state")?;
 
-    Ok(Self { root: root, state })
+    Ok(Self { root, state })
   }
 
   pub fn plugin_dir<'p>(&self, plugin: &'p Plugin) -> Cow<'p, Path> {
