@@ -28,10 +28,10 @@ impl StateFile {
   pub fn init(path: PathBuf) -> Fallible<Self> {
     let mut state = Self { path, data: StateData::default() };
 
-    if !state.path.exists() {
-      state.write()?;
-    } else {
+    if state.path.exists() {
       state.read()?;
+    } else {
+      state.write()?;
     }
 
     Ok(state)
