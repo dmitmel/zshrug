@@ -58,9 +58,7 @@ fn run() -> Fallible<()> {
       let plugins: Vec<&config::Plugin> = config.plugins.iter().collect();
       let installed_plugins = storage.ensure_plugins_are_installed(&plugins)?;
 
-      let script = script::generate(&storage, &installed_plugins)
-        .context("couldn't generate script")?;
-      println!("{}", script);
+      script::generate(&storage, &installed_plugins);
     }
 
     Command::Storage => println!("{}", storage_root.display()),
