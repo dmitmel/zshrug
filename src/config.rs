@@ -46,6 +46,10 @@ pub struct Plugin {
 }
 
 impl Plugin {
+  /// Returns a unique identifier of this plugin based on where it was
+  /// downloaded from. Currently it's an [SHA1](sha1) hash of the `{from}:{name}`
+  /// string where [`{name}`](Plugin::name) and [`{from}`](Plugin::from) are fields
+  /// of this struct.
   pub fn id(&self) -> String {
     let hashed_str = format!("{:?}:{}:{}", self.from, self.name, self.build);
     format!("{:x}", md5::compute(hashed_str))

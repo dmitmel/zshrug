@@ -1,0 +1,11 @@
+https://github.com/zulu-zsh/zulu
+
+https://github.com/getantibody/antibody
+https://github.com/Tarrasch/antigen-hs
+https://github.com/zsh-users/antigen
+
+https://github.com/tarjoilija/zgen
+https://github.com/zdharma/zplugin
+https://github.com/zplug/zplug
+https://github.com/zpm-zsh/zpm
+https://github.com/jedahan/zr

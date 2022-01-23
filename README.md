@@ -1,5 +1,5 @@
 # zshrug
 
-![logo](logo.png)
+![a big shrug face with text "zshrug" below](logo.png)
 
-TODO
+Zshrug is a super-fast plugin manager for Zsh.

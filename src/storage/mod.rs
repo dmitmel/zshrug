@@ -21,6 +21,8 @@ pub struct Storage {
 }
 
 impl Storage {
+  /// Loads storage from a given directory and creates missing files or
+  /// directories if they doesn't exist.
   pub fn init(root: PathBuf) -> Fallible<Self> {
     fs::create_dir_all(&root).with_context(|_| {
       format!("couldn't create storage directory '{}'", root.display())
@@ -33,6 +35,7 @@ impl Storage {
     Ok(Self { root, state })
   }
 
+  /// Returns path to a directory for the sources of the given plugin.
   pub fn plugin_dir<'p>(&self, plugin: &'p Plugin) -> Cow<'p, Path> {
     if plugin.from == PluginSource::Local {
       Cow::Borrowed(Path::new(&plugin.name))
